@@ -7,6 +7,8 @@ var _time := 0.0
 
 
 func _ready() -> void:
+    collision_layer = 0
+    collision_mask = 2   # camada do jogador
     var shape := CollisionShape2D.new()
     var circle := CircleShape2D.new()
     circle.radius = 12.0
