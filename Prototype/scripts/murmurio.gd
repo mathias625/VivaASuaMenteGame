@@ -4,6 +4,7 @@ extends CharacterBody2D
 ## ganha cor e passa a seguir o Wander.
 
 signal befriended(who: Node2D)
+signal noticed
 
 const SaturationShader := preload("res://shaders/saturation.gdshader")
 const GRAVITY := 900.0
@@ -30,6 +31,7 @@ var _whisper_show := 0.0
 var _whisper := ""
 var _player: Node2D
 var _material: ShaderMaterial
+var _noticed := false
 
 
 func setup(player: Node2D, left: float, right: float) -> void:
@@ -75,6 +77,9 @@ func _hostile_behaviour(delta: float) -> void:
     var dx := _player.global_position.x - global_position.x
     var dy := _player.global_position.y - global_position.y
     var speed := PATROL_SPEED
+    if not _noticed and absf(dx) < 100.0 and absf(dy) < 40.0:
+        _noticed = true
+        noticed.emit()
     if _stun > 0.0:
         velocity.x = move_toward(velocity.x, 0.0, 400.0 * delta)
     else:

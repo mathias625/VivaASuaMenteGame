@@ -38,6 +38,9 @@ var _hinted_yawn := false
 var _hinted_charge := false
 var _warned := false
 var _material: ShaderMaterial
+var _lane_from := 0.0
+var _lane_to := 0.0
+var _lane_alpha := 0.0
 
 
 func setup(player: Node2D, hud, left: float, right: float, floor_y: float) -> void:
@@ -60,8 +63,10 @@ func start_fight() -> void:
         return
     _fight_started = true
     activated.emit()
-    _hud.call("show_boss", "Eco da Insônia")
+    _hud.call("show_title", "ECO DA INSÔNIA", 2.4)
+    _hud.call("show_boss", "Eco da Insônia", [12.0 / 22.0, 6.0 / 22.0])
     _hud.call("set_boss", 1.0)
+    position = _home + Vector2(0.0, -230.0)
     _fight_loop()
 
 
@@ -81,7 +86,7 @@ func _phase() -> int:
 # ---------- Luta ----------
 
 func _fight_loop() -> void:
-    await _wait(1.2)
+    await _entrance()
     while hp > 0:
         _state = State.ATTACK
         var phase := _phase()
@@ -110,6 +115,15 @@ func _fight_loop() -> void:
         await _yawn(2.2 - 0.25 * float(phase))
 
 
+func _entrance() -> void:
+    # Entrada dramática: ela desce da escuridão e a arena treme
+    Sfx.play("shadow")
+    await _move_to(_home, 1.3)
+    _shake = 0.4
+    Sfx.play("boss_hit")
+    await _wait(0.9)
+
+
 func _wait(seconds: float) -> void:
     await get_tree().create_timer(seconds).timeout
 
@@ -134,13 +148,19 @@ func _attack_sheep(count: int) -> void:
     await _move_to(Vector2(start_x, _floor_y - 100.0), 0.6)
     for i in range(count):
         _counter_text = str(i + 1)
-        await _wait(0.45)
         # A partir da fase 2, algumas ovelhas vêm do lado oposto
         var side_dir := dir
         var x := start_x
         if phase >= 2 and i % 2 == 1:
             side_dir = -dir
             x = _left + 30.0 if dir < 0.0 else _right - 30.0
+        # Aviso: a faixa do chão por onde a ovelha vai passar pisca antes
+        _lane_from = x
+        _lane_to = _left - 10.0 if side_dir < 0.0 else _right + 10.0
+        _lane_alpha = 0.5
+        Sfx.play("warn", -10.0)
+        await _wait(0.45)
+        _lane_alpha = 0.0
         _spawn_sheep(x, side_dir)
         # Ritmo irregular: não dá para pular no automático
         await _wait(randf_range(0.3, 0.75))
@@ -189,8 +209,13 @@ func _attack_charge(times: int) -> void:
         for i in range(3 if pass_index == 0 else 2):
             _counter_text = "tic" if i % 2 == 0 else "tac"
             _shake = 0.15
+            _lane_from = start_x
+            _lane_to = end_x
+            _lane_alpha = 0.6
+            Sfx.play("warn", -10.0)
             await _wait(0.35)
         _counter_text = ""
+        _lane_alpha = 0.0
         _charging = true
         var travel := absf(end_x - start_x) / CHARGE_SPEED
         var tween := create_tween()
@@ -227,6 +252,7 @@ func receive_love(amount: int, _from_pos: Vector2) -> void:
     hp = maxi(hp - amount, 0)
     _flash = 0.2
     _shake = 0.12
+    Sfx.play("boss_hit")
     _hud.call("set_boss", float(hp) / float(max_hp))
     if hp <= 0:
         _defeat()
@@ -234,6 +260,8 @@ func receive_love(amount: int, _from_pos: Vector2) -> void:
 
 func _defeat() -> void:
     _state = State.SLEEPING
+    Sfx.play("sleep")
+    _lane_alpha = 0.0
     _charging = false
     _counter_text = ""
     _hud.call("hide_boss")
@@ -272,6 +300,19 @@ func _draw() -> void:
         body_col = Color(0.36, 0.38, 0.6)
     if _flash > 0.0:
         body_col = body_col.lightened(0.5)
+    if _lane_alpha > 0.0:
+        var lane_x0 := minf(_lane_from, _lane_to) - global_position.x
+        var lane_x1 := maxf(_lane_from, _lane_to) - global_position.x
+        var pulse := 0.5 + 0.5 * sin(_time * 18.0)
+        draw_rect(Rect2(lane_x0, _floor_y - global_position.y - 5.0, lane_x1 - lane_x0, 5.0), Color(0.8, 0.55, 1.0, _lane_alpha * pulse))
+    draw_circle(c, r + 8.0, Color(0.6, 0.6, 1.0, 0.07))
+    if _phase() >= 3 or _charging:
+        for k in range(12):
+            var tick_angle := float(k) * TAU / 12.0
+            var dir_vec := Vector2(cos(tick_angle), sin(tick_angle))
+            draw_line(c + dir_vec * (r + 4.0), c + dir_vec * (r + 9.0), Color(1.0, 1.0, 1.0, 0.5), 1.5)
+        var hand_angle := _time * (6.0 if _charging else 1.5)
+        draw_line(c, c + Vector2(cos(hand_angle), sin(hand_angle)) * (r + 2.0), Color(1.0, 1.0, 1.0, 0.35), 1.0)
     draw_circle(c, r, body_col)
     draw_circle(c + Vector2(-r * 0.25, -r * 0.25), r * 0.62, body_col.lightened(0.07))
 
@@ -287,6 +328,7 @@ func _draw() -> void:
         else:
             draw_circle(eye, 11.0, Color(0.97, 0.97, 1.0))
             draw_circle(eye + look, 4.5, Color(0.1, 0.1, 0.2))
+            draw_rect(Rect2(eye.x - 11.0, eye.y - 11.0, 22.0, 7.0), body_col)
         draw_arc(eye + Vector2(0.0, 10.0), 10.0, 0.25, PI - 0.25, 10, Color(0.4, 0.3, 0.6), 3.0)
 
     if yawning:

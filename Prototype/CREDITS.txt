@@ -1,0 +1,15 @@
+VIVA A SUA MENTE - créditos
+
+Skin do herói (Wander): "Male Hero Template" (versão free) por Ozzbit Games.
+Licença da versão free: uso pessoal e NÃO comercial, modificações permitidas,
+revenda proibida, créditos obrigatórios ("Ozzbit Games").
+Se o jogo for vendido um dia, será preciso comprar a versão PRO/DELUXE
+ou trocar a skin. Veja assets/hero/LICENSE.txt.
+
+Animais (gato "Marmelada" e demais sprites em assets/animals): "Basic Asset Pack"
+(Basic Animal Animations). O zip enviado não trazia arquivo de licença.
+Confira a licença e o autor na página de onde o pack foi baixado antes de
+publicar o jogo, e coloque o crédito aqui.
+
+Música e efeitos sonoros (assets/sfx e assets/music): sintetizados para este projeto
+(script de geração próprio), sem material de terceiros.

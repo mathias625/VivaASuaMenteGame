@@ -1,6 +1,7 @@
 extends Node2D
 ## Tarcísio: jardineiro de humor seco, a primeira pessoa que volta a ter voz.
-## A origem do node é nos pés dele.
+## Ele não dá missão. Conversa, e o que ele diz sobre os Murmúrios é um
+## palpite de quem já passou por isso. A origem do node é nos pés dele.
 
 signal first_talk_done
 signal reward_given
@@ -43,7 +44,7 @@ func _process(delta: float) -> void:
     var want_prompt: bool = near and _dialogue.can_start()
     if want_prompt != _prompt_shown:
         _prompt_shown = want_prompt
-        _hud.call("set_prompt", "E: conversar com Tarcísio" if want_prompt else "")
+        _hud.call("set_prompt_owner", "tarcisio", "E: conversar com Tarcísio" if want_prompt else "")
     if want_prompt and Input.is_action_just_pressed("interact"):
         _talk()
 
@@ -51,15 +52,12 @@ func _process(delta: float) -> void:
 func _talk() -> void:
     if GameState.boss_defeated:
         _dialogue.start(_lines_after_boss())
-    elif GameState.quest == GameState.QUEST_DONE:
-        if not _reward_done:
-            _dialogue.start(_lines_done(), Callable(self, "_on_reward"))
-        else:
-            _dialogue.start(_lines_hint())
-    elif GameState.quest == GameState.QUEST_ACTIVE:
-        _dialogue.start(_lines_active())
-    else:
+    elif GameState.quest == GameState.QUEST_NONE:
         _dialogue.start(_lines_first(), Callable(self, "_on_first_done"))
+    elif GameState.bonds >= 2 and not _reward_done:
+        _dialogue.start(_lines_reward(), Callable(self, "_on_reward"))
+    else:
+        _dialogue.start(_lines_small_talk())
 
 
 func _on_first_done() -> void:
@@ -76,59 +74,47 @@ func _on_reward() -> void:
 
 func _lines_first() -> Array:
     var lines: Array = []
-    lines.append(["Tarcísio", "Ah. Você chegou. Eu já achava que a porta tinha emperrado."])
-    lines.append(["Tarcísio", "Calma, não precisa dizer nada. Faz tempo que ninguém por aqui diz muita coisa."])
+    lines.append(["Tarcísio", "Ah, finalmente. Eu já achava que a porta tinha emperrado."])
+    lines.append(["Tarcísio", "Não precisa falar nada. Ninguém fala muito por aqui ultimamente."])
     if GameState.has_seed:
         lines.append(["Broto", "Ele fala! Ele ME VIU! Wander, ele me viu!"])
         lines.append(["Tarcísio", "Vi. Um broto falante. Já vi coisa pior nessa horta. Uma vez uma ervilha me deu bom dia."])
     else:
-        lines.append(["Tarcísio", "Cuidado onde pisa. Essa horta é teimosa: só dá ervilha, e ainda reclama."])
-    lines.append(["Tarcísio", "Escuta: por aqui vivem uns bichinhos cinzentos. Os Murmúrios."])
-    lines.append(["Tarcísio", "Ficam sussurrando pelos cantos e dão uns encontrões na gente. Todo mundo acha que é pra brigar com eles."])
-    lines.append(["Tarcísio", "Eu discordo. Eles só estão sozinhos. Fazem barulho porque é o único jeito que conhecem de chamar alguém."])
-    lines.append(["Tarcísio", "Tenta assim: chega perto e oferece um pouco de carinho. Estende a mão e aperta J."])
-    lines.append(["Tarcísio", "Faz isso com três deles e volta aqui. Sem pressa. Até planta teimosa cresce."])
+        lines.append(["Tarcísio", "Cuidado onde pisa. A horta é teimosa: só dá ervilha, e reclama o tempo todo."])
+    lines.append(["Tarcísio", "Tem uns bichinhos cinzentos rondando por aí. Os Murmúrios. Dão encontrão, ficam sussurrando pelos cantos."])
+    lines.append(["Tarcísio", "Eu já tentei espantar, não adianta. Um dia só fiquei parado do lado de um, sem fazer nada, e ele foi se aquietando."])
+    lines.append(["Tarcísio", "Se quiser tentar, estende a mão pra ele, devagar. É só apertar J. Funciona com broto murcho também."])
     return lines
 
 
-func _lines_active() -> Array:
+func _lines_reward() -> Array:
     var lines: Array = []
-    match GameState.bonds:
-        0:
-            lines.append(["Tarcísio", "Nenhum ainda? Tudo bem. Eles são tímidos. Chega devagar e aperta J quando estiver perto."])
-            lines.append(["Tarcísio", "Se levar um encontrão, respira. Parar um pouco não é desistir, é manutenção."])
-        1:
-            lines.append(["Tarcísio", "Um já! Reparou que ele ganhou cor? Eles ficam assim quando alguém presta atenção."])
-            lines.append(["Tarcísio", "Faltam dois. E essa esquiva que você aprendeu vai ser útil pra mais coisa do que Murmúrio."])
-        _:
-            lines.append(["Tarcísio", "Dois! Falta só um. Olha eles te seguindo... parecem patinhos."])
+    lines.append(["Tarcísio", "Opa. Olha só, você anda acompanhado."])
+    lines.append(["Tarcísio", "Eu era assim, sabe? Achava que tinha que resolver tudo sozinho. Deu errado em quase tudo. Menos as ervilhas."])
+    lines.append(["Tarcísio", "Escuta: lá no fim da trilha tem uma névoa. Mora uma moça lá que não dorme. Nunca vi a névoa deixar ninguém passar sozinho. Com companhia, ela costuma abrir."])
+    lines.append(["Tarcísio", "Toma, é um fio da minha horta. Amarra no pulso. Não faz nada de mágico, mas dá um ar de quem sabe pra onde vai."])
+    if GameState.has_seed:
+        lines.append(["Broto", "Eu quero um fio também!"])
+        lines.append(["Tarcísio", "Você já é um broto inteiro, ué."])
     return lines
 
 
-func _lines_done() -> Array:
-    return [
-        ["Tarcísio", "Três! Olha só... eles te seguem como patinhos."],
-        ["Tarcísio", "Sabe o que aprendi nessa horta? Quase nada nasce porque a gente grita com ele."],
-        ["Tarcísio", "Agora que você tem companhia, posso contar. No fim da trilha, na torre do relógio, mora a Insônia."],
-        ["Tarcísio", "Ela não é má. Só não dorme, e quem chega perto também não. Já levei chá pra ela. Ficou me olhando, de olhos arregalados."],
-        ["Tarcísio", "Não vá achando que precisa derrotá-la. Ela está tão cansada que nem lembra por que continua acordada. Espere ela bocejar."],
-        ["Broto", "Bocejar. Entendi. Isso eu sei fazer."],
-        ["Tarcísio", "Toma. É um fio dourado da minha horta. Amarra no cachecol. Não faz nada de mágico, mas ajuda a andar mais firme."],
-        ["Tarcísio", "A névoa do portão já se abriu. A torre é logo depois."],
+func _lines_small_talk() -> Array:
+    var pool := [
+        "A ervilha desse ano tá com ideia própria. Nasceu torta.",
+        "Sabia que samambaia fica emburrada se ninguém conversa com ela? Eu converso. Ela não responde, mas fico tranquilo.",
+        "Hoje cedo vi um Murmúrio parado olhando as nuvens. Quase fiz companhia.",
+        "Se passar na padaria, fala com a Tarsila. Ela finge que é brava.",
+        "A Mel anda assobiando por aí. Ainda não saiu nenhuma música, mas o esforço é bonito.",
     ]
-
-
-func _lines_hint() -> Array:
-    return [
-        ["Tarcísio", "A torre fica depois do portão. Quando precisar, volta aqui pra prosear. A horta não vai a lugar nenhum."],
-    ]
+    return [["Tarcísio", pool[randi() % pool.size()]]]
 
 
 func _lines_after_boss() -> Array:
     return [
         ["Tarcísio", "Ouvi o silêncio daqui. Foi o melhor barulho que escutei esse ano."],
-        ["Tarcísio", "E você não a derrotou. Você a ajudou a dormir. É um trabalho diferente."],
-        ["Tarcísio", "Provavelmente ela acorda de novo. Mas agora você sabe onde fica a torre, e ela sabe quem leva o chá."],
+        ["Tarcísio", "Você não derrotou a moça, né? Ajudou ela a dormir. É um serviço diferente."],
+        ["Tarcísio", "Ela deve acordar de novo, mais dia menos dia. Mas agora você sabe o caminho da torre. E ela sabe quem leva o chá."],
         ["Broto", "Isso foi bonito, Tarcísio. Quase chorei folhas."],
     ]
 
